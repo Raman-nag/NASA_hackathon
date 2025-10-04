@@ -28,10 +28,13 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Database connection
+// Database connection (optional)
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/exoplanet-ai', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+}).catch(err => {
+  console.log('⚠️  MongoDB not available, running without database:', err.message);
+  console.log('📊 Some features may be limited');
 });
 
 // Models
@@ -74,6 +77,19 @@ app.get('/api/health', (req, res) => {
 // Get model performance statistics
 app.get('/api/performance', async (req, res) => {
   try {
+    // Check if MongoDB is connected
+    if (mongoose.connection.readyState !== 1) {
+      return res.json({
+        accuracy: 0.95,
+        precision: 0.94,
+        recall: 0.93,
+        f1Score: 0.935,
+        totalPredictions: 0,
+        lastUpdated: new Date(),
+        note: 'Database not available - showing default values'
+      });
+    }
+    
     const performance = await ModelPerformance.findOne().sort({ createdAt: -1 });
     res.json(performance || {
       accuracy: 0.95,
@@ -116,8 +132,11 @@ app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
             });
           }
 
-          // Save to database
-          const savedData = await ExoplanetData.insertMany(predictions);
+          // Save to database (if available)
+          let savedData = predictions;
+          if (mongoose.connection.readyState === 1) {
+            savedData = await ExoplanetData.insertMany(predictions);
+          }
 
           // Clean up uploaded file
           fs.unlinkSync(filePath);
@@ -125,7 +144,8 @@ app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
           res.json({
             message: 'File processed successfully',
             predictions: savedData,
-            totalProcessed: results.length
+            totalProcessed: results.length,
+            note: mongoose.connection.readyState !== 1 ? 'Database not available - data not saved' : undefined
           });
         } catch (error) {
           res.status(500).json({ error: error.message });
@@ -163,11 +183,15 @@ app.post('/api/submit-data', async (req, res) => {
       timestamp: new Date()
     };
 
-    const savedData = await ExoplanetData.create(result);
+    let savedData = result;
+    if (mongoose.connection.readyState === 1) {
+      savedData = await ExoplanetData.create(result);
+    }
 
     res.json({
       message: 'Data processed successfully',
-      prediction: savedData
+      prediction: savedData,
+      note: mongoose.connection.readyState !== 1 ? 'Database not available - data not saved' : undefined
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -177,6 +201,17 @@ app.post('/api/submit-data', async (req, res) => {
 // Get prediction history
 app.get('/api/predictions', async (req, res) => {
   try {
+    // Check if MongoDB is connected
+    if (mongoose.connection.readyState !== 1) {
+      return res.json({
+        predictions: [],
+        totalPages: 0,
+        currentPage: 1,
+        total: 0,
+        note: 'Database not available - no prediction history'
+      });
+    }
+
     const { page = 1, limit = 10 } = req.query;
     const predictions = await ExoplanetData.find()
       .sort({ timestamp: -1 })

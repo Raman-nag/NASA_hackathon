@@ -29,8 +29,8 @@ const NavContainer = styled.div`
 const Logo = styled(Link)`
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 1.5rem;
+  gap: 5px;
+  font-size: 1rem;
   font-weight: 700;
   color: ${props => props.theme.colors.accent};
   text-decoration: none;
