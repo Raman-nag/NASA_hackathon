@@ -1,0 +1,21 @@
+{
+  "model_type": "RandomForestClassifier",
+  "accuracy": 0.7370622059592263,
+  "feature_names": [
+    "koi_period",
+    "koi_duration",
+    "koi_prad",
+    "koi_depth",
+    "koi_steff",
+    "koi_srad",
+    "koi_slogg"
+  ],
+  "n_features": 7,
+  "n_estimators": 100,
+  "max_depth": 10,
+  "classes": [
+    "CANDIDATE",
+    "CONFIRMED",
+    "FALSE POSITIVE"
+  ]
+}

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { FaChartLine, FaChartBar, FaChartPie, FaRocket, FaDownload } from 'react-icons/fa';
+import { FaChartLine, FaChartBar, FaChartPie, FaDownload } from 'react-icons/fa';
 import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ScatterChart, Scatter, BarChart, Bar, PieChart, Pie, Cell,
   AreaChart, Area, ComposedChart
 } from 'recharts';
@@ -74,9 +74,9 @@ const ChartsGrid = styled.div`
   }
 `;
 
-const FullWidthChart = styled.div`
-  grid-column: 1 / -1;
-`;
+// const FullWidthChart = styled.div`
+//   grid-column: 1 / -1;
+// `;
 
 const ChartCard = styled(motion.div)`
   background: rgba(26, 35, 50, 0.6);

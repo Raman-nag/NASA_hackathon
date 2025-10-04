@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { FaRocket, FaChartLine, FaCheckCircle, FaExclamationTriangle, FaTimesCircle, FaEye } from 'react-icons/fa';
+import { FaRocket, FaChartLine, FaCheckCircle, FaEye } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import axios from 'axios';
 

@@ -313,11 +313,7 @@ const Results = () => {
   const [filter, setFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
-
-  useEffect(() => {
-    fetchPredictions();
-  }, [currentPage, filter]);
+  const [total] = useState(0);
 
   const fetchPredictions = async () => {
     try {
@@ -332,6 +328,10 @@ const Results = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchPredictions();
+  }, [currentPage, filter, fetchPredictions]);
 
   const filteredPredictions = predictions.filter(prediction => {
     const matchesSearch = prediction.prediction.toLowerCase().includes(searchTerm.toLowerCase()) ||
