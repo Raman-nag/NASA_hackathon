@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6.0
+    container_name: exoplanet-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: exoplanet-ai
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - exoplanet-network
+
+  app:
+    build: .
+    container_name: exoplanet-ai-app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/exoplanet-ai
+      - PORT=5000
+    depends_on:
+      - mongodb
+    volumes:
+      - ./uploads:/app/uploads
+      - ./ai/models:/app/ai/models
+    networks:
+      - exoplanet-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: exoplanet-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - app
+    networks:
+      - exoplanet-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  exoplanet-network:
+    driver: bridge
+
