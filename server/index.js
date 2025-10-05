@@ -9,6 +9,7 @@ const csv = require('csv-parser');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
+const chokidar = require('chokidar');
 require('dotenv').config();
 
 const app = express();
@@ -71,9 +72,78 @@ const upload = multer({
   }
 });
 
+// Global variables for caching
+let cachedColumns = null;
+let lastColumnUpdate = 0;
+const COLUMN_CACHE_DURATION = 300000; // 5 minutes
+
+// File monitoring for CSV changes
+const aiDir = path.join(__dirname, '../ai');
+const watcher = chokidar.watch(path.join(aiDir, '*.csv'), {
+  ignored: /^\./, 
+  persistent: true,
+  ignoreInitial: true
+});
+
+watcher.on('change', (filePath) => {
+  console.log(`CSV file changed: ${filePath}`);
+  // Clear column cache when CSV changes
+  cachedColumns = null;
+  lastColumnUpdate = 0;
+});
+
 // Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'NASA Exoplanet AI API is running' });
+});
+
+// Get available columns from CSV
+app.get('/api/columns', async (req, res) => {
+  try {
+    const now = Date.now();
+    
+    // Return cached data if still valid
+    if (cachedColumns && (now - lastColumnUpdate) < COLUMN_CACHE_DURATION) {
+      return res.json(cachedColumns);
+    }
+    
+    // Get columns from Python script
+    const options = {
+      mode: 'text',
+      pythonPath: 'python',
+      pythonOptions: ['-u'],
+      scriptPath: aiDir,
+      args: []
+    };
+
+    PythonShell.run('get_columns.py', options, (err, results) => {
+      if (err) {
+        console.error('Error getting columns:', err);
+        return res.status(500).json({ 
+          error: 'Failed to get columns',
+          columns: []
+        });
+      }
+      
+      try {
+        const columnData = JSON.parse(results[0]);
+        
+        // Cache the result
+        cachedColumns = columnData;
+        lastColumnUpdate = now;
+        
+        res.json(columnData);
+      } catch (parseError) {
+        console.error('Error parsing column data:', parseError);
+        res.status(500).json({ 
+          error: 'Failed to parse column data',
+          columns: []
+        });
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Get model performance statistics
@@ -158,42 +228,55 @@ app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
   }
 });
 
-// Submit single data point
+// Submit single data point with new system
 app.post('/api/submit-data', async (req, res) => {
   try {
-    const { orbitalPeriod, transitDuration, planetaryRadius, stellarRadius, stellarMass, stellarTemperature } = req.body;
+    const { userInputs, selectedColumns } = req.body;
 
-    if (!orbitalPeriod || !transitDuration || !planetaryRadius) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    if (!userInputs || !selectedColumns || selectedColumns.length === 0) {
+      return res.status(400).json({ error: 'Missing userInputs or selectedColumns' });
     }
 
-    const dataPoint = {
-      orbital_period: parseFloat(orbitalPeriod),
-      transit_duration: parseFloat(transitDuration),
-      planetary_radius: parseFloat(planetaryRadius),
-      stellar_radius: parseFloat(stellarRadius) || 1.0,
-      stellar_mass: parseFloat(stellarMass) || 1.0,
-      stellar_temperature: parseFloat(stellarTemperature) || 5778
+    // Prepare data for Python script
+    const inputData = {
+      user_inputs: userInputs,
+      selected_columns: selectedColumns
     };
 
-    const prediction = await runAIModel(dataPoint);
-    
-    const result = {
-      ...dataPoint,
-      prediction: prediction.classification,
-      confidence: prediction.confidence,
-      timestamp: new Date()
+    const options = {
+      mode: 'text',
+      pythonPath: 'python',
+      pythonOptions: ['-u'],
+      scriptPath: aiDir,
+      args: [JSON.stringify(inputData)]
     };
 
-    let savedData = result;
-    if (mongoose.connection.readyState === 1) {
-      savedData = await ExoplanetData.create(result);
-    }
-
-    res.json({
-      message: 'Data processed successfully',
-      prediction: savedData,
-      note: mongoose.connection.readyState !== 1 ? 'Database not available - data not saved' : undefined
+    PythonShell.run('new_predict.py', options, (err, results) => {
+      if (err) {
+        console.error('Python script error:', err);
+        return res.status(500).json({ 
+          error: 'AI analysis failed',
+          message: 'Failed to process data with AI model'
+        });
+      }
+      
+      try {
+        const analysisResult = JSON.parse(results[0]);
+        
+        // Add timestamp
+        analysisResult.timestamp = new Date();
+        
+        res.json({
+          message: 'Data processed successfully',
+          analysis: analysisResult
+        });
+      } catch (parseError) {
+        console.error('Error parsing AI result:', parseError);
+        res.status(500).json({ 
+          error: 'Failed to parse AI result',
+          message: 'AI model returned invalid data'
+        });
+      }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

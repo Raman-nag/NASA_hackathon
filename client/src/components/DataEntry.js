@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { FaRocket, FaSpinner, FaCheckCircle, FaExclamationTriangle, FaTimesCircle } from 'react-icons/fa';
+import { FaRocket, FaSpinner, FaCheckCircle, FaExclamationTriangle, FaTimesCircle, FaSearch, FaDatabase, FaChartLine } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 
@@ -12,7 +12,7 @@ const EntryContainer = styled.div`
 `;
 
 const Container = styled.div`
-  max-width: 800px;
+  max-width: 1000px;
   margin: 0 auto;
 `;
 
@@ -48,16 +48,79 @@ const FormContainer = styled(motion.div)`
   margin-bottom: 40px;
 `;
 
-const FormGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 30px;
-  margin-bottom: 30px;
+const SectionTitle = styled.h3`
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: ${props => props.theme.colors.text};
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+`;
 
-  @media (max-width: ${props => props.theme.breakpoints.mobile}) {
-    grid-template-columns: 1fr;
-    gap: 20px;
+const ColumnSelectionContainer = styled.div`
+  margin-bottom: 40px;
+`;
+
+const ColumnGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 10px;
+  background: rgba(11, 20, 38, 0.3);
+`;
+
+const ColumnItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background: ${props => props.selected ? 'rgba(0, 212, 255, 0.1)' : 'transparent'};
+  border: 1px solid ${props => props.selected ? props.theme.colors.accent : 'transparent'};
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: rgba(0, 212, 255, 0.05);
+    border-color: ${props => props.theme.colors.accent};
   }
+`;
+
+const Checkbox = styled.input`
+  width: 18px;
+  height: 18px;
+  accent-color: ${props => props.theme.colors.accent};
+`;
+
+const ColumnInfo = styled.div`
+  flex: 1;
+`;
+
+const ColumnName = styled.div`
+  font-weight: 600;
+  color: ${props => props.theme.colors.text};
+  margin-bottom: 4px;
+`;
+
+const ColumnDetails = styled.div`
+  font-size: 0.9rem;
+  color: ${props => props.theme.colors.textSecondary};
+`;
+
+const InputSection = styled.div`
+  margin-bottom: 30px;
+`;
+
+const InputGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
 `;
 
 const FormGroup = styled.div`
@@ -118,21 +181,6 @@ const SubmitButton = styled.button`
     opacity: 0.6;
     cursor: not-allowed;
   }
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
-  }
-
-  &:hover:not(:disabled)::before {
-    left: 100%;
-  }
 `;
 
 const ResultsContainer = styled(motion.div)`
@@ -148,6 +196,42 @@ const ResultsTitle = styled.h3`
   font-size: 2rem;
   font-weight: 600;
   color: ${props => props.theme.colors.text};
+  margin-bottom: 30px;
+`;
+
+const ExactMatchCard = styled.div`
+  background: rgba(76, 175, 80, 0.1);
+  border: 2px solid #4CAF50;
+  border-radius: 15px;
+  padding: 30px;
+  margin-bottom: 30px;
+`;
+
+const ExactMatchIcon = styled.div`
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 2rem;
+  color: white;
+`;
+
+const ExactMatchTitle = styled.h4`
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #4CAF50;
+  margin-bottom: 10px;
+`;
+
+const MLResultsCard = styled.div`
+  background: rgba(11, 20, 38, 0.8);
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 15px;
+  padding: 30px;
   margin-bottom: 30px;
 `;
 
@@ -215,6 +299,60 @@ const ConfidenceFill = styled.div`
   width: ${props => props.percentage}%;
 `;
 
+const NeighborsSection = styled.div`
+  margin-top: 30px;
+`;
+
+const NeighborsTitle = styled.h4`
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: ${props => props.theme.colors.text};
+  margin-bottom: 20px;
+`;
+
+const NeighborsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+`;
+
+const NeighborCard = styled.div`
+  background: rgba(11, 20, 38, 0.6);
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 10px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-color: ${props => props.theme.colors.accent};
+    transform: translateY(-2px);
+  }
+`;
+
+const NeighborHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+`;
+
+const NeighborIndex = styled.div`
+  font-weight: 600;
+  color: ${props => props.theme.colors.accent};
+`;
+
+const SimilarityScore = styled.div`
+  font-weight: 600;
+  color: ${props => props.theme.colors.text};
+`;
+
+const NeighborDetails = styled.div`
+  font-size: 0.9rem;
+  color: ${props => props.theme.colors.textSecondary};
+  line-height: 1.4;
+`;
+
 const DataSummary = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -243,23 +381,17 @@ const DataValue = styled.div`
 
 const getClassificationStyle = (classification) => {
   switch (classification) {
-    case 'Confirmed Exoplanet':
+    case 'Confirmed':
       return {
         gradient: 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)',
         borderColor: '#4CAF50',
         icon: FaCheckCircle
       };
-    case 'Planetary Candidate':
+    case 'Candidate':
       return {
         gradient: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)',
         borderColor: '#FF9800',
         icon: FaExclamationTriangle
-      };
-    case 'False Positive':
-      return {
-        gradient: 'linear-gradient(135deg, #F44336 0%, #D32F2F 100%)',
-        borderColor: '#F44336',
-        icon: FaTimesCircle
       };
     default:
       return {
@@ -271,40 +403,74 @@ const getClassificationStyle = (classification) => {
 };
 
 const DataEntry = () => {
-  const [formData, setFormData] = useState({
-    orbitalPeriod: '',
-    transitDuration: '',
-    planetaryRadius: '',
-    stellarRadius: '1.0',
-    stellarMass: '1.0',
-    stellarTemperature: '5778'
-  });
+  const [columns, setColumns] = useState([]);
+  const [selectedColumns, setSelectedColumns] = useState([]);
+  const [userInputs, setUserInputs] = useState({});
+  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
+  const [selectedNeighbor, setSelectedNeighbor] = useState(null);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
+  // Load columns on component mount
+  useEffect(() => {
+    loadColumns();
+  }, []);
+
+  const loadColumns = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get('/api/columns');
+      setColumns(response.data.columns || []);
+    } catch (error) {
+      console.error('Error loading columns:', error);
+      toast.error('Failed to load column information');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleColumnToggle = (columnName) => {
+    setSelectedColumns(prev => {
+      if (prev.includes(columnName)) {
+        return prev.filter(col => col !== columnName);
+      } else {
+        return [...prev, columnName];
+      }
+    });
+  };
+
+  const handleInputChange = (columnName, value) => {
+    setUserInputs(prev => ({
       ...prev,
-      [name]: value
+      [columnName]: value
     }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.orbitalPeriod || !formData.transitDuration || !formData.planetaryRadius) {
-      toast.error('Please fill in all required fields');
+    if (selectedColumns.length === 0) {
+      toast.error('Please select at least one column');
+      return;
+    }
+
+    if (Object.keys(userInputs).length === 0) {
+      toast.error('Please enter values for at least one selected column');
       return;
     }
 
     setSubmitting(true);
     setResult(null);
+    setSelectedNeighbor(null);
 
     try {
-      const response = await axios.post('/api/submit-data', formData);
-      setResult(response.data.prediction);
-      toast.success('Data analyzed successfully!');
+      const response = await axios.post('/api/submit-data', {
+        userInputs,
+        selectedColumns
+      });
+      
+      setResult(response.data.analysis);
+      toast.success('Analysis completed successfully!');
     } catch (error) {
       console.error('Submission error:', error);
       toast.error('Failed to analyze data. Please try again.');
@@ -314,24 +480,22 @@ const DataEntry = () => {
   };
 
   const resetForm = () => {
-    setFormData({
-      orbitalPeriod: '',
-      transitDuration: '',
-      planetaryRadius: '',
-      stellarRadius: '1.0',
-      stellarMass: '1.0',
-      stellarTemperature: '5778'
-    });
+    setSelectedColumns([]);
+    setUserInputs({});
     setResult(null);
+    setSelectedNeighbor(null);
+  };
+
+  const handleNeighborSelect = (neighbor) => {
+    setSelectedNeighbor(neighbor);
   };
 
   return (
     <EntryContainer>
       <Container>
-        <EntryTitle>Manual Data Entry</EntryTitle>
+        <EntryTitle>Dynamic Exoplanet Analysis</EntryTitle>
         <EntryDescription>
-          Enter exoplanet transit data manually for AI analysis. 
-          Provide the orbital period, transit duration, and planetary radius for the most accurate results.
+          Select any columns from the dataset and enter values to find exact matches or get AI-powered analysis with nearest neighbors.
         </EntryDescription>
 
         <FormContainer
@@ -340,96 +504,82 @@ const DataEntry = () => {
           transition={{ duration: 0.6 }}
         >
           <form onSubmit={handleSubmit}>
-            <FormGrid>
-              <FormGroup>
-                <Label htmlFor="orbitalPeriod">Orbital Period (days) *</Label>
-                <Input
-                  type="number"
-                  id="orbitalPeriod"
-                  name="orbitalPeriod"
-                  value={formData.orbitalPeriod}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 365.25"
-                  step="0.01"
-                  min="0"
-                  required
-                />
-              </FormGroup>
+            <ColumnSelectionContainer>
+              <SectionTitle>
+                <FaDatabase />
+                Select Columns to Analyze
+              </SectionTitle>
+              
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}>
+                  <FaSpinner className="fa-spin" style={{ fontSize: '2rem', color: '#00D4FF' }} />
+                  <p style={{ marginTop: '10px', color: '#B0BEC5' }}>Loading columns...</p>
+                </div>
+              ) : (
+                <ColumnGrid>
+                  {columns.map((column, index) => (
+                    <ColumnItem
+                      key={index}
+                      selected={selectedColumns.includes(column.name)}
+                      onClick={() => handleColumnToggle(column.name)}
+                    >
+                      <Checkbox
+                        type="checkbox"
+                        checked={selectedColumns.includes(column.name)}
+                        onChange={() => handleColumnToggle(column.name)}
+                      />
+                      <ColumnInfo>
+                        <ColumnName>{column.name}</ColumnName>
+                        <ColumnDetails>
+                          {column.is_numeric ? 'Numeric' : 'Text'} • {column.non_null_count} values
+                          {column.is_numeric && column.non_null_count > 0 && (
+                            <span> • Range: {column.min?.toFixed(2)} - {column.max?.toFixed(2)}</span>
+                          )}
+                        </ColumnDetails>
+                      </ColumnInfo>
+                    </ColumnItem>
+                  ))}
+                </ColumnGrid>
+              )}
+            </ColumnSelectionContainer>
 
-              <FormGroup>
-                <Label htmlFor="transitDuration">Transit Duration (hours) *</Label>
-                <Input
-                  type="number"
-                  id="transitDuration"
-                  name="transitDuration"
-                  value={formData.transitDuration}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 13.0"
-                  step="0.1"
-                  min="0"
-                  required
-                />
-              </FormGroup>
+            {selectedColumns.length > 0 && (
+              <InputSection>
+                <SectionTitle>
+                  <FaSearch />
+                  Enter Values for Selected Columns
+                </SectionTitle>
+                
+                <InputGrid>
+                  {selectedColumns.map((columnName) => {
+                    const column = columns.find(col => col.name === columnName);
+                    return (
+                      <FormGroup key={columnName}>
+                        <Label htmlFor={columnName}>
+                          {columnName}
+                          {column?.is_numeric && column.non_null_count > 0 && (
+                            <span style={{ fontSize: '0.9rem', color: '#B0BEC5', fontWeight: 'normal' }}>
+                              {' '}(Range: {column.min?.toFixed(2)} - {column.max?.toFixed(2)})
+                            </span>
+                          )}
+                        </Label>
+                        <Input
+                          type={column?.is_numeric ? 'number' : 'text'}
+                          id={columnName}
+                          value={userInputs[columnName] || ''}
+                          onChange={(e) => handleInputChange(columnName, e.target.value)}
+                          placeholder={`Enter ${columnName} value`}
+                          step={column?.is_numeric ? '0.01' : undefined}
+                          min={column?.is_numeric ? '0' : undefined}
+                        />
+                      </FormGroup>
+                    );
+                  })}
+                </InputGrid>
+              </InputSection>
+            )}
 
-              <FormGroup>
-                <Label htmlFor="planetaryRadius">Planetary Radius (Earth radii) *</Label>
-                <Input
-                  type="number"
-                  id="planetaryRadius"
-                  name="planetaryRadius"
-                  value={formData.planetaryRadius}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 1.0"
-                  step="0.1"
-                  min="0"
-                  required
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <Label htmlFor="stellarRadius">Stellar Radius (Solar radii)</Label>
-                <Input
-                  type="number"
-                  id="stellarRadius"
-                  name="stellarRadius"
-                  value={formData.stellarRadius}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 1.0"
-                  step="0.1"
-                  min="0"
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <Label htmlFor="stellarMass">Stellar Mass (Solar masses)</Label>
-                <Input
-                  type="number"
-                  id="stellarMass"
-                  name="stellarMass"
-                  value={formData.stellarMass}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 1.0"
-                  step="0.1"
-                  min="0"
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <Label htmlFor="stellarTemperature">Stellar Temperature (K)</Label>
-                <Input
-                  type="number"
-                  id="stellarTemperature"
-                  name="stellarTemperature"
-                  value={formData.stellarTemperature}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 5778"
-                  step="1"
-                  min="0"
-                />
-              </FormGroup>
-            </FormGrid>
-
-            <SubmitButton type="submit" disabled={submitting}>
+            <SubmitButton type="submit" disabled={submitting || selectedColumns.length === 0}>
               {submitting ? (
                 <>
                   <FaSpinner className="fa-spin" />
@@ -453,53 +603,105 @@ const DataEntry = () => {
           >
             <ResultsTitle>Analysis Results</ResultsTitle>
             
-            <ClassificationCard
-              gradient={getClassificationStyle(result.prediction).gradient}
-              borderColor={getClassificationStyle(result.prediction).borderColor}
-            >
-              <ClassificationIcon gradient={getClassificationStyle(result.prediction).gradient}>
-                {React.createElement(getClassificationStyle(result.prediction).icon)}
-              </ClassificationIcon>
-              
-              <ClassificationTitle>{result.prediction}</ClassificationTitle>
-              
-              <ConfidenceScore>{(result.confidence * 100).toFixed(1)}%</ConfidenceScore>
-              
-              <ConfidenceBar>
-                <ConfidenceFill percentage={result.confidence * 100} />
-              </ConfidenceBar>
-              
-              <p style={{ color: '#B0BEC5', marginBottom: '20px' }}>
-                Confidence Level: {result.confidence > 0.8 ? 'High' : result.confidence > 0.6 ? 'Medium' : 'Low'}
-              </p>
-            </ClassificationCard>
+            {result.type === 'exact_match' ? (
+              <ExactMatchCard>
+                <ExactMatchIcon>
+                  <FaCheckCircle />
+                </ExactMatchIcon>
+                <ExactMatchTitle>Exact Match Found!</ExactMatchTitle>
+                <p style={{ color: '#B0BEC5', marginBottom: '20px' }}>
+                  Your input values exactly match a record in the dataset.
+                </p>
+                
+                <DataSummary>
+                  {Object.entries(result.result.record).map(([key, value]) => (
+                    <DataItem key={key}>
+                      <DataLabel>{key}</DataLabel>
+                      <DataValue>{value}</DataValue>
+                    </DataItem>
+                  ))}
+                </DataSummary>
+              </ExactMatchCard>
+            ) : result.type === 'ml_analysis' ? (
+              <>
+                <ClassificationCard
+                  gradient={getClassificationStyle(result.classification.classification).gradient}
+                  borderColor={getClassificationStyle(result.classification.classification).borderColor}
+                >
+                  <ClassificationIcon gradient={getClassificationStyle(result.classification.classification).gradient}>
+                    {React.createElement(getClassificationStyle(result.classification.classification).icon)}
+                  </ClassificationIcon>
+                  
+                  <ClassificationTitle>{result.classification.classification}</ClassificationTitle>
+                  
+                  <ConfidenceScore>{(result.classification.confidence * 100).toFixed(1)}%</ConfidenceScore>
+                  
+                  <ConfidenceBar>
+                    <ConfidenceFill percentage={result.classification.confidence * 100} />
+                  </ConfidenceBar>
+                  
+                  <p style={{ color: '#B0BEC5', marginBottom: '20px' }}>
+                    AI Prediction Confidence: {result.classification.confidence > 0.8 ? 'High' : result.classification.confidence > 0.6 ? 'Medium' : 'Low'}
+                  </p>
+                </ClassificationCard>
 
-            <DataSummary>
-              <DataItem>
-                <DataLabel>Orbital Period</DataLabel>
-                <DataValue>{result.orbital_period} days</DataValue>
-              </DataItem>
-              <DataItem>
-                <DataLabel>Transit Duration</DataLabel>
-                <DataValue>{result.transit_duration} hours</DataValue>
-              </DataItem>
-              <DataItem>
-                <DataLabel>Planetary Radius</DataLabel>
-                <DataValue>{result.planetary_radius} R⊕</DataValue>
-              </DataItem>
-              <DataItem>
-                <DataLabel>Stellar Radius</DataLabel>
-                <DataValue>{result.stellar_radius} R☉</DataValue>
-              </DataItem>
-              <DataItem>
-                <DataLabel>Stellar Mass</DataLabel>
-                <DataValue>{result.stellar_mass} M☉</DataValue>
-              </DataItem>
-              <DataItem>
-                <DataLabel>Stellar Temperature</DataLabel>
-                <DataValue>{result.stellar_temperature} K</DataValue>
-              </DataItem>
-            </DataSummary>
+                <NeighborsSection>
+                  <NeighborsTitle>Similar Exoplanets (Top {result.neighbors.length})</NeighborsTitle>
+                  <NeighborsGrid>
+                    {result.neighbors.map((neighbor, index) => (
+                      <NeighborCard
+                        key={index}
+                        onClick={() => handleNeighborSelect(neighbor)}
+                        style={{
+                          borderColor: selectedNeighbor?.index === neighbor.index ? '#00D4FF' : undefined
+                        }}
+                      >
+                        <NeighborHeader>
+                          <NeighborIndex>#{index + 1}</NeighborIndex>
+                          <SimilarityScore>
+                            {(neighbor.similarity_score * 100).toFixed(1)}% similar
+                          </SimilarityScore>
+                        </NeighborHeader>
+                        <NeighborDetails>
+                          <div><strong>Distance:</strong> {neighbor.distance.toFixed(4)}</div>
+                          <div><strong>Index:</strong> {neighbor.index}</div>
+                          {Object.entries(neighbor.record).slice(0, 3).map(([key, value]) => (
+                            <div key={key}><strong>{key}:</strong> {value}</div>
+                          ))}
+                          {Object.entries(neighbor.record).length > 3 && (
+                            <div style={{ color: '#00D4FF', marginTop: '5px' }}>
+                              +{Object.entries(neighbor.record).length - 3} more fields
+                            </div>
+                          )}
+                        </NeighborDetails>
+                      </NeighborCard>
+                    ))}
+                  </NeighborsGrid>
+                </NeighborsSection>
+
+                {selectedNeighbor && (
+                  <MLResultsCard style={{ marginTop: '30px' }}>
+                    <h4 style={{ color: '#00D4FF', marginBottom: '20px' }}>
+                      Full Details for Selected Neighbor
+                    </h4>
+                    <DataSummary>
+                      {Object.entries(selectedNeighbor.record).map(([key, value]) => (
+                        <DataItem key={key}>
+                          <DataLabel>{key}</DataLabel>
+                          <DataValue>{value}</DataValue>
+                        </DataItem>
+                      ))}
+                    </DataSummary>
+                  </MLResultsCard>
+                )}
+              </>
+            ) : (
+              <div style={{ color: '#F44336', textAlign: 'center' }}>
+                <FaTimesCircle style={{ fontSize: '3rem', marginBottom: '20px' }} />
+                <h3>Analysis Failed</h3>
+                <p>{result.message || 'Unknown error occurred'}</p>
+              </div>
+            )}
 
             <SubmitButton onClick={resetForm} style={{ marginTop: '30px' }}>
               <FaRocket />
@@ -513,4 +715,3 @@ const DataEntry = () => {
 };
 
 export default DataEntry;
-
